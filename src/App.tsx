@@ -27,7 +27,7 @@ const WebScraperApp: React.FC = () => {
   return (
     <Box
       sx={{
-        minHeight: "100vh",
+        minHeight: "calc(100vh - 48px)",
         bgcolor: "grey.50",
         py: 3,
       }}
@@ -36,9 +36,10 @@ const WebScraperApp: React.FC = () => {
         <Paper
           elevation={2}
           sx={{
-            p: 4,
+            px: 16,
+            py: 2,
             borderRadius: 2,
-            minHeight: "calc(100vh - 48px)",
+            minHeight: "calc(100vh - 96px)",
           }}
         >
           <Typography
