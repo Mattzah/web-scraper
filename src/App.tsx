@@ -37,6 +37,21 @@ const WebScraperApp: React.FC = () => {
     try {
       const data = await scrapeUrl(url);
       setResult(data);
+
+      // Auto-trigger summarization
+      setSummarizing(true);
+      try {
+        const summaryPoints = await summarizeContent(data.content, data.title);
+        setSummary(summaryPoints);
+      } catch (err) {
+        if (err instanceof ApiError) {
+          setError(err.message);
+        } else {
+          setError("Failed to generate summary");
+        }
+      } finally {
+        setSummarizing(false);
+      }
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -45,29 +60,6 @@ const WebScraperApp: React.FC = () => {
       }
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleSummarize = async () => {
-    if (!result) return;
-
-    setSummarizing(true);
-    setError(null);
-
-    try {
-      const summaryPoints = await summarizeContent(
-        result.content,
-        result.title
-      );
-      setSummary(summaryPoints);
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError("Failed to generate summary");
-      }
-    } finally {
-      setSummarizing(false);
     }
   };
 
@@ -89,7 +81,7 @@ const WebScraperApp: React.FC = () => {
         <Paper
           elevation={2}
           sx={{
-            px: 16,
+            px: 24,
             py: 2,
             borderRadius: 2,
             minHeight: "calc(100vh - 96px)",
@@ -172,24 +164,9 @@ const WebScraperApp: React.FC = () => {
                 <Divider />
 
                 <Box>
-                  <Stack direction="row" alignItems="center" spacing={2} mb={2}>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      Page Summary
-                    </Typography>
-                    <Button
-                      onClick={handleSummarize}
-                      disabled={!result || summarizing}
-                      variant="contained"
-                      size="small"
-                      sx={{ fontWeight: "bold" }}
-                    >
-                      {summarizing ? (
-                        <CircularProgress size={16} color="inherit" />
-                      ) : (
-                        "SUMMARIZE"
-                      )}
-                    </Button>
-                  </Stack>
+                  <Typography variant="subtitle2" color="text.secondary" mb={2}>
+                    Page Summary
+                  </Typography>
 
                   <Paper
                     variant="outlined"
@@ -253,8 +230,7 @@ const WebScraperApp: React.FC = () => {
                         color="text.secondary"
                         sx={{ fontStyle: "italic", mt: 2 }}
                       >
-                        Click SUMMARIZE to generate key points from the scraped
-                        content
+                        Summary generation complete
                       </Typography>
                     ) : (
                       <Typography
@@ -265,7 +241,8 @@ const WebScraperApp: React.FC = () => {
                         • Summary will appear here after scraping content
                         <br />
                         • Key points will be extracted automatically
-                        <br />• Click SUMMARIZE after scraping to generate
+                        <br />• Summary will be generated automatically after
+                        scraping
                       </Typography>
                     )}
                   </Paper>
