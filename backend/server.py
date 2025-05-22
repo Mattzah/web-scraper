@@ -7,6 +7,14 @@ import re
 from urllib.parse import urlparse
 import time
 from collections import defaultdict
+import os
+from dotenv import load_dotenv
+from openai import OpenAI
+import json
+from typing import List
+
+# Load environment variables
+load_dotenv()
 
 app = FastAPI()
 
@@ -19,6 +27,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Initialize OpenAI client
+openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
 # Rate limiting
 rate_limiter = defaultdict(list)
 
@@ -30,6 +41,13 @@ class ScrapeResponse(BaseModel):
     title: str
     content: str
     word_count: int
+
+class SummarizeRequest(BaseModel):
+    content: str
+    title: str
+
+class SummarizeResponse(BaseModel):
+    summary: List[str]
 
 def is_valid_url(url: str) -> str:
     """Validate and clean URL"""
@@ -162,6 +180,48 @@ async def scrape_website(request: UrlRequest):
     
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error")
+
+@app.post("/api/summarize", response_model=SummarizeResponse)
+async def summarize_content(request: SummarizeRequest):
+    """Summarize webpage content using OpenAI"""
+    
+    if not openai_client.api_key:
+        raise HTTPException(status_code=500, detail="OpenAI API key not configured")
+    
+    try:
+        # Limit content length to avoid token limits
+        content = request.content[:8000] if len(request.content) > 8000 else request.content
+        
+        prompt = f"""Analyze and summarize the following webpage content into a comprehensive overview suitable for government briefing analysis. Provide 3-5 detailed paragraphs covering:
+
+1. Core subject matter and key findings/conclusions
+2. Relevant stakeholders, organizations, or entities involved
+3. Policy implications, regulatory context, or governance aspects
+4. Economic, social, or operational impacts discussed
+5. Any data, statistics, or evidence presented
+
+Focus on extracting information that would be valuable for policy analysis, strategic planning, and contextual understanding. Write in clear, professional prose suitable for briefing documents. Return only the summary text, no additional formatting.
+
+Title: {request.title}
+
+Content: {content}"""
+
+        response = openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=800,  # Increased for paragraph format
+            temperature=0.2,  # Lower for more consistent analytical tone
+        )
+        
+        summary_text = response.choices[0].message.content
+        if not summary_text:
+            raise HTTPException(status_code=500, detail="No summary generated")
+        
+        # Return as single summary text wrapped in array for API consistency
+        return SummarizeResponse(summary=[summary_text.strip()])
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Summarization failed: {str(e)}")
 
 @app.get("/api/health")
 async def health():

@@ -12,13 +12,15 @@ import {
   Alert,
   Chip,
 } from "@mui/material";
-import { scrapeUrl, ApiError } from "./services/api";
+import { scrapeUrl, summarizeContent, ApiError } from "./services/api";
 import type { ScrapeResult } from "./services/api";
 
 const WebScraperApp: React.FC = () => {
   const [url, setUrl] = useState<string>("");
   const [result, setResult] = useState<ScrapeResult | null>(null);
+  const [summary, setSummary] = useState<string[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const [summarizing, setSummarizing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleScrape = async () => {
@@ -30,6 +32,7 @@ const WebScraperApp: React.FC = () => {
     setLoading(true);
     setError(null);
     setResult(null);
+    setSummary(null);
 
     try {
       const data = await scrapeUrl(url);
@@ -45,14 +48,33 @@ const WebScraperApp: React.FC = () => {
     }
   };
 
+  const handleSummarize = async () => {
+    if (!result) return;
+
+    setSummarizing(true);
+    setError(null);
+
+    try {
+      const summaryPoints = await summarizeContent(
+        result.content,
+        result.title
+      );
+      setSummary(summaryPoints);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError("Failed to generate summary");
+      }
+    } finally {
+      setSummarizing(false);
+    }
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       handleScrape();
     }
-  };
-
-  const handleSummarize = () => {
-    console.log("Summarize functionality will be implemented later");
   };
 
   return (
@@ -156,12 +178,16 @@ const WebScraperApp: React.FC = () => {
                     </Typography>
                     <Button
                       onClick={handleSummarize}
-                      disabled={!result}
+                      disabled={!result || summarizing}
                       variant="contained"
                       size="small"
                       sx={{ fontWeight: "bold" }}
                     >
-                      SUMMARIZE
+                      {summarizing ? (
+                        <CircularProgress size={16} color="inherit" />
+                      ) : (
+                        "SUMMARIZE"
+                      )}
                     </Button>
                   </Stack>
 
@@ -175,7 +201,7 @@ const WebScraperApp: React.FC = () => {
                       overflow: "auto",
                     }}
                   >
-                    {result ? (
+                    {result && (
                       <Stack spacing={2}>
                         <Typography variant="h6" gutterBottom>
                           {result.title}
@@ -192,14 +218,44 @@ const WebScraperApp: React.FC = () => {
                             color="secondary"
                           />
                         </Stack>
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{ fontStyle: "italic" }}
-                        >
-                          Summary will appear here after clicking SUMMARIZE
-                        </Typography>
                       </Stack>
+                    )}
+
+                    {summarizing ? (
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 2,
+                          mt: 2,
+                        }}
+                      >
+                        <CircularProgress size={20} />
+                        <Typography variant="body2" color="text.secondary">
+                          Generating summary...
+                        </Typography>
+                      </Box>
+                    ) : summary ? (
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          mt: 1,
+                          lineHeight: 1.6,
+                          fontSize: "0.875rem",
+                          whiteSpace: "pre-line",
+                        }}
+                      >
+                        {summary[0]}
+                      </Typography>
+                    ) : result ? (
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ fontStyle: "italic", mt: 2 }}
+                      >
+                        Click SUMMARIZE to generate key points from the scraped
+                        content
+                      </Typography>
                     ) : (
                       <Typography
                         variant="body2"

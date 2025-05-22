@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const api = axios.create({
   baseURL: '/api',
-  timeout: 15000,
+  timeout: 30000, // Increased timeout for summarization
 });
 
 export interface ScrapeResult {
@@ -33,5 +33,22 @@ export const scrapeUrl = async (url: string): Promise<ScrapeResult> => {
       throw new ApiError(status, message);
     }
     throw new ApiError(500, 'Unknown error occurred');
+  }
+};
+
+export const summarizeContent = async (content: string, title: string): Promise<string[]> => {
+  try {
+    const response = await api.post<{ summary: string[] }>('/summarize', { 
+      content, 
+      title 
+    });
+    return response.data.summary;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status || 500;
+      const message = error.response?.data?.detail || 'Summarization failed';
+      throw new ApiError(status, message);
+    }
+    throw new ApiError(500, 'Summarization failed');
   }
 };
