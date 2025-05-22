@@ -8,20 +8,51 @@ import {
   Container,
   Stack,
   Divider,
+  CircularProgress,
+  Alert,
+  Chip,
 } from "@mui/material";
+import { scrapeUrl, ApiError } from "./services/api";
+import type { ScrapeResult } from "./services/api";
 
 const WebScraperApp: React.FC = () => {
   const [url, setUrl] = useState<string>("");
-  const [scrapedText, setScrapedText] = useState<string>("");
+  const [result, setResult] = useState<ScrapeResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleScrape = () => {
-    // Logic will go here
-    console.log("Scraping:", url);
+  const handleScrape = async () => {
+    if (!url.trim()) {
+      setError("Please enter a URL");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      const data = await scrapeUrl(url);
+      setResult(data);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError("An unexpected error occurred");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleScrape();
+    }
   };
 
   const handleSummarize = () => {
-    // Logic will go here
-    console.log("Summarizing scraped text");
+    console.log("Summarize functionality will be implemented later");
   };
 
   return (
@@ -50,6 +81,16 @@ const WebScraperApp: React.FC = () => {
           >
             Web Scraper
           </Typography>
+
+          {error && (
+            <Alert
+              severity="error"
+              sx={{ mb: 2 }}
+              onClose={() => setError(null)}
+            >
+              {error}
+            </Alert>
+          )}
 
           <Stack
             direction={{ xs: "column", lg: "row" }}
@@ -83,19 +124,25 @@ const WebScraperApp: React.FC = () => {
                       fullWidth
                       value={url}
                       onChange={(e) => setUrl(e.target.value)}
-                      placeholder="https://example.com"
+                      onKeyPress={handleKeyPress}
+                      placeholder="https://example.com or just example.com"
                       variant="outlined"
                       size="small"
                       sx={{ flex: 1 }}
+                      disabled={loading}
                     />
                     <Button
                       onClick={handleScrape}
-                      disabled={!url.trim()}
+                      disabled={!url.trim() || loading}
                       variant="contained"
                       size="small"
-                      sx={{ fontWeight: "bold" }}
+                      sx={{ fontWeight: "bold", minWidth: 100 }}
                     >
-                      SCRAPE
+                      {loading ? (
+                        <CircularProgress size={20} color="inherit" />
+                      ) : (
+                        "SCRAPE"
+                      )}
                     </Button>
                   </Stack>
                 </Box>
@@ -109,7 +156,7 @@ const WebScraperApp: React.FC = () => {
                     </Typography>
                     <Button
                       onClick={handleSummarize}
-                      disabled={!scrapedText}
+                      disabled={!result}
                       variant="contained"
                       size="small"
                       sx={{ fontWeight: "bold" }}
@@ -128,17 +175,43 @@ const WebScraperApp: React.FC = () => {
                       overflow: "auto",
                     }}
                   >
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ fontStyle: "italic" }}
-                    >
-                      • Summary will appear here after scraping and summarizing
-                      content
-                      <br />
-                      • Key points will be extracted automatically
-                      <br />• Click SUMMARIZE after scraping to generate
-                    </Typography>
+                    {result ? (
+                      <Stack spacing={2}>
+                        <Typography variant="h6" gutterBottom>
+                          {result.title}
+                        </Typography>
+                        <Stack direction="row" spacing={1} mb={2}>
+                          <Chip
+                            label={`${result.word_count} words`}
+                            size="small"
+                            color="primary"
+                          />
+                          <Chip
+                            label={new URL(result.url).hostname}
+                            size="small"
+                            color="secondary"
+                          />
+                        </Stack>
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{ fontStyle: "italic" }}
+                        >
+                          Summary will appear here after clicking SUMMARIZE
+                        </Typography>
+                      </Stack>
+                    ) : (
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ fontStyle: "italic" }}
+                      >
+                        • Summary will appear here after scraping content
+                        <br />
+                        • Key points will be extracted automatically
+                        <br />• Click SUMMARIZE after scraping to generate
+                      </Typography>
+                    )}
                   </Paper>
                 </Box>
               </Stack>
@@ -167,17 +240,34 @@ const WebScraperApp: React.FC = () => {
                   minHeight: 400,
                 }}
               >
-                {scrapedText ? (
+                {loading ? (
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      height: "100%",
+                      gap: 2,
+                    }}
+                  >
+                    <CircularProgress />
+                    <Typography variant="body1" color="text.secondary">
+                      Scraping website content...
+                    </Typography>
+                  </Box>
+                ) : result ? (
                   <Typography
                     variant="body2"
                     component="pre"
                     sx={{
                       whiteSpace: "pre-wrap",
-                      fontFamily: "Roboto Mono, monospace",
+                      fontFamily: "Roboto, sans-serif",
                       lineHeight: 1.6,
+                      fontSize: "0.875rem",
                     }}
                   >
-                    {scrapedText}
+                    {result.content}
                   </Typography>
                 ) : (
                   <Typography
@@ -189,8 +279,7 @@ const WebScraperApp: React.FC = () => {
                       mt: 10,
                     }}
                   >
-                    Enter a URL and click SCRAPE to view the website content
-                    here
+                    Enter a URL and click SCRAPE to view website content here
                   </Typography>
                 )}
               </Paper>
