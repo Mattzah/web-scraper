@@ -88,32 +88,104 @@ def check_rate_limit(client_ip: str) -> bool:
     rate_limiter[client_ip].append(now)
     return True
 
+def deduplicate_text(texts: list) -> list:
+    """Remove duplicate text blocks while preserving order"""
+    seen = set()
+    unique_texts = []
+    
+    for text in texts:
+        # Normalize text for comparison (remove extra spaces, case)
+        normalized = ' '.join(text.split()).lower()
+        
+        # Skip very short text that's likely to be duplicated
+        if len(normalized) < 30:
+            # For short text, check exact match to avoid losing legitimate short content
+            if text not in seen:
+                seen.add(text)
+                unique_texts.append(text)
+        else:
+            # For longer text, use normalized version to catch near-duplicates
+            if normalized not in seen:
+                seen.add(normalized)
+                unique_texts.append(text)
+    
+    return unique_texts
+
+def prioritize_content_by_length(texts: list) -> list:
+    """Sort content blocks by length to prioritize substantial content"""
+    # Separate short and long content
+    short_content = [t for t in texts if len(t) < 100]
+    long_content = [t for t in texts if len(t) >= 100]
+    
+    # Sort long content by length (longest first)
+    long_content.sort(key=len, reverse=True)
+    
+    # Return long content first, then short content
+    return long_content + short_content
+
 def extract_text(html_content: str) -> tuple[str, str]:
-    """Extract title and text from HTML"""
+    """Extract title and text from HTML with deduplication and content prioritization"""
     soup = BeautifulSoup(html_content, 'html.parser')
     
-    # Remove unwanted elements
-    for element in soup(['script', 'style', 'nav', 'footer', 'header', 'aside', 'meta']):
+    # Remove only the obvious non-content elements
+    for element in soup(['script', 'style', 'meta', 'link', 'noscript']):
         element.decompose()
+    
+    # Remove only clearly identifiable navigation/junk - be very conservative
+    obvious_junk = [
+        'nav', 'header', 'footer', 
+        '.nav', '.navigation', '.navbar',
+        '.header', '.footer', '.sidebar',
+        '.menu', '.breadcrumbs'
+    ]
+    
+    for selector in obvious_junk:
+        try:
+            for element in soup.select(selector):
+                element.decompose()
+        except:
+            continue
     
     # Get title
     title_tag = soup.find('title')
     title = title_tag.get_text().strip() if title_tag else "No title found"
     
-    # Get main content
+    # Get main content - prefer semantic tags but don't be strict
     main_content = soup.find('main') or soup.find('article') or soup.find('body') or soup
     
-    # Extract text from paragraphs and headings
+    # Extract text but filter out link-heavy elements (navigation lists)
     text_elements = main_content.find_all(['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'div'])
     
-    if text_elements:
-        texts = []
-        for elem in text_elements:
-            text = elem.get_text().strip()
-            if text and len(text) > 10:  # Filter out very short text
-                texts.append(text)
-        content = '\n\n'.join(texts)
+    texts = []
+    for elem in text_elements:
+        text = elem.get_text().strip()
+        
+        # Skip very short text
+        if len(text) < 15:
+            continue
+            
+        # Skip if it's mostly links (likely navigation)
+        links = elem.find_all('a')
+        if links:
+            link_text_length = sum(len(link.get_text()) for link in links)
+            total_text_length = len(text)
+            if total_text_length > 0 and (link_text_length / total_text_length) > 0.7:
+                continue  # Skip if >70% of text is links
+        
+        # Only keep text that's substantial
+        if len(text) > 15:
+            texts.append(text)
+    
+    if texts:
+        # Deduplicate content
+        unique_texts = deduplicate_text(texts)
+        
+        # Prioritize longer content blocks
+        prioritized_texts = prioritize_content_by_length(unique_texts)
+        
+        content = '\n\n'.join(prioritized_texts)
     else:
+        # Absolute fallback - just get all text
         content = main_content.get_text()
     
     # Clean up text
@@ -160,7 +232,7 @@ async def scrape_website(request: UrlRequest):
         
         word_count = len(content.split())
 
-        print("\n===== Scraped Content =====")
+        print(f"\n===== Scraped Content ({word_count} words) =====")
         print(content)
         print("===============================\n")
         
@@ -213,8 +285,8 @@ Content: {content}"""
         response = openai_client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=1000,  # Increased for paragraph format
-            temperature=0.2,  # Lower for more consistent analytical tone
+            max_tokens=1000,  
+            temperature=0.2,  
         )
         
         summary_text = response.choices[0].message.content
