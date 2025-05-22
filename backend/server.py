@@ -159,6 +159,10 @@ async def scrape_website(request: UrlRequest):
             raise HTTPException(status_code=400, detail="No readable content found")
         
         word_count = len(content.split())
+
+        print("\n===== Scraped Content =====")
+        print(content)
+        print("===============================\n")
         
         return ScrapeResponse(
             url=clean_url,
@@ -209,13 +213,17 @@ Content: {content}"""
         response = openai_client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=800,  # Increased for paragraph format
+            max_tokens=1000,  # Increased for paragraph format
             temperature=0.2,  # Lower for more consistent analytical tone
         )
         
         summary_text = response.choices[0].message.content
         if not summary_text:
             raise HTTPException(status_code=500, detail="No summary generated")
+        
+        print("\n===== Summarized Output from Website =====")
+        print(summary_text)
+        print("===============================\n")
         
         # Return as single summary text wrapped in array for API consistency
         return SummarizeResponse(summary=[summary_text.strip()])
