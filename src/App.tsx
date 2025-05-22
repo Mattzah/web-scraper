@@ -1,5 +1,14 @@
 import React, { useState } from "react";
-import { Box, TextField, Button, Paper, Typography, Grid } from "@mui/material";
+import {
+  Box,
+  TextField,
+  Button,
+  Paper,
+  Typography,
+  Container,
+  Stack,
+  Divider,
+} from "@mui/material";
 
 const WebScraperApp: React.FC = () => {
   const [url, setUrl] = useState<string>("");
@@ -16,76 +25,179 @@ const WebScraperApp: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
-      <div className="bg-white rounded-lg shadow-sm p-6 h-full max-w-7xl mx-auto">
-        <h1 className="text-2xl font-semibold mb-6">Web Scraper</h1>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        bgcolor: "grey.50",
+        py: 3,
+      }}
+    >
+      <Container maxWidth="xl">
+        <Paper
+          elevation={2}
+          sx={{
+            p: 4,
+            borderRadius: 2,
+            minHeight: "calc(100vh - 48px)",
+          }}
+        >
+          <Typography
+            variant="h4"
+            component="h1"
+            gutterBottom
+            fontWeight="bold"
+          >
+            Web Scraper
+          </Typography>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
-          {/* Left Panel */}
-          <div className="flex flex-col">
-            <h2 className="text-lg font-medium mb-4">Initial Input</h2>
+          <Stack
+            direction={{ xs: "column", lg: "row" }}
+            spacing={4}
+            sx={{ height: "calc(100vh - 200px)" }}
+          >
+            {/* Left Panel */}
+            <Box
+              sx={{
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+                minWidth: { xs: "100%", lg: "50%" },
+              }}
+            >
+              <Typography variant="h6" component="h2" gutterBottom>
+                Input & Summary
+              </Typography>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Web Reference
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  placeholder="https://"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                <button
-                  onClick={handleScrape}
-                  disabled={!url.trim()}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
-                >
-                  SCRAPE
-                </button>
-              </div>
-            </div>
+              <Stack spacing={3} sx={{ flex: 1 }}>
+                <Box>
+                  <Typography
+                    variant="subtitle2"
+                    gutterBottom
+                    color="text.secondary"
+                  >
+                    Website URL
+                  </Typography>
+                  <Stack direction="row" spacing={2}>
+                    <TextField
+                      fullWidth
+                      value={url}
+                      onChange={(e) => setUrl(e.target.value)}
+                      placeholder="https://example.com"
+                      variant="outlined"
+                      size="small"
+                      sx={{ flex: 1 }}
+                    />
+                    <Button
+                      onClick={handleScrape}
+                      disabled={!url.trim()}
+                      variant="contained"
+                      size="small"
+                      sx={{ fontWeight: "bold" }}
+                    >
+                      SCRAPE
+                    </Button>
+                  </Stack>
+                </Box>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Web Page Summary:
-              </label>
-              <button
-                onClick={handleSummarize}
-                disabled={!scrapedText}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium text-sm"
+                <Divider />
+
+                <Box>
+                  <Stack direction="row" alignItems="center" spacing={2} mb={2}>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Page Summary
+                    </Typography>
+                    <Button
+                      onClick={handleSummarize}
+                      disabled={!scrapedText}
+                      variant="contained"
+                      size="small"
+                      sx={{ fontWeight: "bold" }}
+                    >
+                      SUMMARIZE
+                    </Button>
+                  </Stack>
+
+                  <Paper
+                    variant="outlined"
+                    sx={{
+                      p: 3,
+                      bgcolor: "grey.25",
+                      flex: 1,
+                      minHeight: 250,
+                      overflow: "auto",
+                    }}
+                  >
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ fontStyle: "italic" }}
+                    >
+                      • Summary will appear here after scraping and summarizing
+                      content
+                      <br />
+                      • Key points will be extracted automatically
+                      <br />• Click SUMMARIZE after scraping to generate
+                    </Typography>
+                  </Paper>
+                </Box>
+              </Stack>
+            </Box>
+
+            {/* Right Panel */}
+            <Box
+              sx={{
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+                minWidth: { xs: "100%", lg: "50%" },
+              }}
+            >
+              <Typography variant="h6" component="h2" gutterBottom>
+                Scraped Content
+              </Typography>
+
+              <Paper
+                variant="outlined"
+                sx={{
+                  flex: 1,
+                  p: 3,
+                  bgcolor: "grey.25",
+                  overflow: "auto",
+                  minHeight: 400,
+                }}
               >
-                SUMMARIZE
-              </button>
-            </div>
-
-            <div className="flex-1 border border-gray-300 rounded-md p-4 bg-gray-50 overflow-auto">
-              <div className="text-sm text-gray-600">
-                <div>• Summary point 1</div>
-                <div>• Summary point 2</div>
-                <div>•</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Panel */}
-          <div className="flex flex-col">
-            <h2 className="text-lg font-medium mb-4">Web Text Preview</h2>
-
-            <div className="flex-1 border border-gray-300 rounded-md p-4 bg-gray-50 overflow-auto">
-              {scrapedText ? (
-                <div className="text-sm whitespace-pre-wrap">{scrapedText}</div>
-              ) : (
-                <div className="text-sm text-gray-500">
-                  Scraped content will appear here...
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+                {scrapedText ? (
+                  <Typography
+                    variant="body2"
+                    component="pre"
+                    sx={{
+                      whiteSpace: "pre-wrap",
+                      fontFamily: "Roboto Mono, monospace",
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    {scrapedText}
+                  </Typography>
+                ) : (
+                  <Typography
+                    variant="body1"
+                    color="text.secondary"
+                    sx={{
+                      fontStyle: "italic",
+                      textAlign: "center",
+                      mt: 10,
+                    }}
+                  >
+                    Enter a URL and click SCRAPE to view the website content
+                    here
+                  </Typography>
+                )}
+              </Paper>
+            </Box>
+          </Stack>
+        </Paper>
+      </Container>
+    </Box>
   );
 };
 
