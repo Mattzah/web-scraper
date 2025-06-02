@@ -268,15 +268,16 @@ async def summarize_content(request: SummarizeRequest):
         # Limit content length to avoid token limits
         content = request.content[:8000] if len(request.content) > 8000 else request.content
         
-        prompt = f"""Analyze and summarize the following webpage content into a comprehensive overview suitable for government briefing analysis. Provide 3-5 detailed paragraphs covering:
+        prompt = f"""Analyze and summarize the following webpage content into a comprehensive overview suitable for government briefing analysis. Provide 5-8 concise bullet points covering:
 
-1. Core subject matter and key findings/conclusions
-2. Relevant stakeholders, organizations, or entities involved
-3. Policy implications, regulatory context, or governance aspects
-4. Economic, social, or operational impacts discussed
-5. Any data, statistics, or evidence presented
+1. Background information and definitions 
+2. Core subject matter and key findings/conclusions
+3. Relevant stakeholders, organizations, or entities involved
+4. Policy implications, regulatory context, or governance aspects
+5. Economic, social, or operational impacts discussed
+6. Any data, statistics, or evidence presented
 
-Focus on extracting information that would be valuable for policy analysis, strategic planning, and contextual understanding. Write in clear, professional prose suitable for briefing documents. Return only the summary text, no additional formatting.
+Focus on information valuable for briefing senior officials, policy analysis and strategic planning. Format as bullet points without markers.
 
 Title: {request.title}
 
